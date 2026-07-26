@@ -1,0 +1,194 @@
+{% extends "base.html" %}
+
+{% block title %}Research Overview — Fraud Detection System{% endblock %}
+
+{% block content %}
+<section class="landing-hero">
+  <div class="container hero-grid">
+    <div class="hero-copy">
+      <p class="eyebrow">7005SCN &middot; Individual Research Project</p>
+      <h1>Machine Learning-Based Fraud Detection Prototype</h1>
+      <p class="lead">
+        A research monitoring dashboard for evaluating supervised learning models
+        on synthetic financial transaction data, supporting fraud classification,
+        risk scoring, and comparative algorithmic performance analysis.
+      </p>
+      <div class="hero-actions">
+        <a class="button button-primary" href="{{ url_for('predict') }}">Analyse a Transaction</a>
+        <a class="button button-secondary" href="#model-evaluation">View Model Results</a>
+      </div>
+    </div>
+
+    <aside class="hero-panel card">
+      <h2>System Status</h2>
+      {% if model_ready %}
+        <div class="status-row status-ok">
+          <span class="status-dot"></span>
+          <div>
+            <strong>Operational</strong>
+            <p>Production model loaded and ready for inference.</p>
+          </div>
+        </div>
+        <dl class="meta-list">
+          <div>
+            <dt>Deployed model</dt>
+            <dd>{{ best_model }}</dd>
+          </div>
+          {% if best_accuracy %}
+          <div>
+            <dt>Test accuracy</dt>
+            <dd>{{ '%.1f'|format(best_accuracy * 100) }}%</dd>
+          </div>
+          {% endif %}
+          {% if best_f1 %}
+          <div>
+            <dt>F1 score</dt>
+            <dd>{{ '%.3f'|format(best_f1) }}</dd>
+          </div>
+          {% endif %}
+          <div>
+            <dt>Dataset</dt>
+            <dd>Cifer Fraud Detection (AF)</dd>
+          </div>
+        </dl>
+      {% else %}
+        <div class="status-row status-warn">
+          <span class="status-dot"></span>
+          <div>
+            <strong>Model unavailable</strong>
+            <p>Run <code>python scripts/train_fast.py</code> to train and deploy a model.</p>
+          </div>
+        </div>
+      {% endif %}
+    </aside>
+  </div>
+</section>
+
+<section class="container section">
+  <div class="section-heading">
+    <h2>Research Scope</h2>
+    <p>This prototype addresses financial fraud detection through a structured experimental pipeline aligned with the project proposal.</p>
+  </div>
+  <div class="scope-grid">
+    <article class="scope-card">
+      <span class="scope-icon">01</span>
+      <h3>Data Preparation</h3>
+      <p>Cleaning, feature engineering, class balancing, and account-legitimacy enrichment across multi-part transaction records.</p>
+    </article>
+    <article class="scope-card">
+      <span class="scope-icon">02</span>
+      <h3>Model Comparison</h3>
+      <p>Benchmarking Logistic Regression, Decision Tree, Random Forest, and XGBoost using accuracy, precision, recall, F1, and ROC-AUC.</p>
+    </article>
+    <article class="scope-card">
+      <span class="scope-icon">03</span>
+      <h3>Risk Monitoring</h3>
+      <p>Interactive transaction scoring with fraud probability estimates and categorical risk levels for analyst review.</p>
+    </article>
+  </div>
+</section>
+
+{% if summary_stats %}
+<section class="container section">
+  <div class="stats-row">
+    {% for stat in summary_stats %}
+    <div class="stat-card">
+      <span class="stat-value">{{ stat.value }}</span>
+      <span class="stat-label">{{ stat.label }}</span>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+<section class="container section" id="model-evaluation">
+  <div class="section-heading">
+    <h2>Model Evaluation Summary</h2>
+    <p>Comparative test-set performance on the balanced 50/50 evaluation split. The highest-accuracy model is deployed to the web interface.</p>
+  </div>
+
+  <article class="card evaluation-card">
+    {% if metrics %}
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Algorithm</th>
+              <th>Accuracy</th>
+              <th>Precision</th>
+              <th>Recall</th>
+              <th>F1 Score</th>
+              <th>ROC-AUC</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in metrics %}
+            <tr{% if row.model.replace('_', ' ').title() == best_model %} class="row-best"{% endif %}>
+              <td>{{ row.model.replace('_', ' ').title() }}</td>
+              <td>{{ '%.2f%%'|format(row.accuracy * 100) }}</td>
+              <td>{{ '%.2f%%'|format(row.precision * 100) }}</td>
+              <td>{{ '%.2f%%'|format(row.recall * 100) }}</td>
+              <td>{{ '%.3f'|format(row.f1_score) }}</td>
+              <td>{{ '%.2f%%'|format(row.roc_auc * 100) }}</td>
+              <td>
+                {% if row.model.replace('_', ' ').title() == best_model %}
+                  <span class="tag tag-deployed">Deployed</span>
+                {% else %}
+                  <span class="tag tag-benchmark">Benchmarked</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="muted">No evaluation metrics available. Train models to populate this section.</p>
+    {% endif %}
+  </article>
+</section>
+
+<section class="container section">
+  <div class="grid two-col">
+    <article class="card">
+      <h2>Methodology</h2>
+      <ul class="method-list">
+        <li><strong>Dataset:</strong> CiferAI/Cifer-Fraud-Detection-Dataset-AF (Hugging Face)</li>
+        <li><strong>Preprocessing:</strong> Feature engineering, standardisation, and 50/50 class balancing</li>
+        <li><strong>Key features:</strong> Transaction attributes and account legitimacy indicators</li>
+        <li><strong>Evaluation:</strong> Stratified train/test split with held-out test metrics</li>
+        <li><strong>Selection criterion:</strong> Highest test accuracy for production deployment</li>
+      </ul>
+    </article>
+
+    <article class="card">
+      <h2>Research Outputs</h2>
+      <ul class="method-list">
+        <li>Comparative analysis of four supervised classifiers</li>
+        <li>Trained and serialised production-ready fraud model</li>
+        <li>Interactive monitoring dashboard (this application)</li>
+        <li>Reproducible training pipeline and evaluation artefacts</li>
+      </ul>
+      <details class="api-details">
+        <summary>REST API reference</summary>
+        <pre>POST /api/predict
+Content-Type: application/json
+
+{
+  "step": 240,
+  "type": "TRANSFER",
+  "amount": 50000,
+  "nameOrig": "C123456789",
+  "oldbalanceOrg": 100000,
+  "newbalanceOrig": 50000,
+  "nameDest": "M987654321",
+  "oldbalanceDest": 0,
+  "newbalanceDest": 50000,
+  "isFlaggedFraud": 0
+}</pre>
+      </details>
+    </article>
+  </div>
+</section>
+{% endblock %}

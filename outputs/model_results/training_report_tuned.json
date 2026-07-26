@@ -1,0 +1,52 @@
+{
+  "best_model": "decision_tree",
+  "metrics": [
+    {
+      "model": "decision_tree",
+      "accuracy": 0.9194,
+      "precision": 0.8758,
+      "recall": 0.9773,
+      "f1_score": 0.9238,
+      "roc_auc": 0.9871,
+      "threshold": 0.039696969696969696
+    },
+    {
+      "model": "logistic_regression",
+      "accuracy": 0.8438,
+      "precision": 0.762,
+      "recall": 1.0,
+      "f1_score": 0.8649,
+      "roc_auc": 1.0,
+      "threshold": 0.02484848484848485
+    },
+    {
+      "model": "xgboost",
+      "accuracy": 0.8224,
+      "precision": 1.0,
+      "recall": 0.6448,
+      "f1_score": 0.7841,
+      "roc_auc": 1.0,
+      "threshold": 0.9009090909090909
+    },
+    {
+      "model": "random_forest",
+      "accuracy": 0.7922,
+      "precision": 0.7064,
+      "recall": 1.0,
+      "f1_score": 0.8279,
+      "roc_auc": 1.0,
+      "threshold": 0.02484848484848485
+    }
+  ],
+  "dataset": {
+    "parts_used": [
+      "Cifer-Fraud-Detection-Dataset-AF-part-1-14.csv"
+    ],
+    "fraud_rows": 1984,
+    "legitimate_rows_selected": 1984,
+    "total_rows": 3968,
+    "balance": "50/50",
+    "legitimate_origin_accounts": 1479693,
+    "legitimate_destination_accounts": 1479672
+  }
+}

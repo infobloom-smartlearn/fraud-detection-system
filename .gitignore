@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.env
+.env.*
+
+# IDE / OS
+.cursor/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Training data (too large for Git — not needed at runtime)
+data/Cifer-Fraud-Detection-Dataset-AF/
+data/processed/
+data/download.log
+
+# Optional training outputs / plots
+outputs/eda/
+outputs/model_results/*.png
+
+# Redundant model artefacts (pipeline bundle is sufficient for deploy)
+models/account_registry.joblib
+models/random_forest*.joblib
+models/xgboost*.joblib
+models/logistic_regression*.joblib
+models/decision_tree.joblib
+
+# Keep for deployment:
+# models/fraud_detection_pipeline.joblib
+# models/best_model.joblib
+# models/decision_tree_tuned.joblib
+# outputs/model_results/model_comparison_latest.csv
+# outputs/model_results/training_report_tuned.json

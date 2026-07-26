@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block title %}Analyse Transaction — Fraud Detection System{% endblock %}
+
+{% block content %}
+<div class="container">
+<section class="hero compact">
+  <h1>Transaction Analysis</h1>
+  <p>Submit transaction attributes to generate a fraud classification, probability score, and risk level.</p>
+</section>
+
+<div class="grid two-col">
+  <form class="card form-card" method="post">
+    <h2>Transaction Details</h2>
+
+    <label>Simulation Step (hour)
+      <input type="number" name="step" min="0" max="744" value="240" required>
+    </label>
+
+    <label>Transaction Type
+      <select name="type" required>
+        <option value="CASH_IN">CASH_IN</option>
+        <option value="CASH_OUT">CASH_OUT</option>
+        <option value="DEBIT">DEBIT</option>
+        <option value="PAYMENT" selected>PAYMENT</option>
+        <option value="TRANSFER">TRANSFER</option>
+      </select>
+    </label>
+
+    <label>Amount
+      <input type="number" name="amount" min="0" step="0.01" value="10000" required>
+    </label>
+
+    <label>Origin Account (nameOrig)
+      <input type="text" name="nameOrig" value="C123456789" required>
+    </label>
+
+    <label>Origin Balance Before
+      <input type="number" name="oldbalanceOrg" min="0" step="0.01" value="50000" required>
+    </label>
+
+    <label>Origin Balance After
+      <input type="number" name="newbalanceOrig" min="0" step="0.01" value="40000" required>
+    </label>
+
+    <label>Destination Account (nameDest)
+      <input type="text" name="nameDest" value="M987654321" required>
+    </label>
+
+    <label>Destination Balance Before
+      <input type="number" name="oldbalanceDest" min="0" step="0.01" value="0" required>
+    </label>
+
+    <label>Destination Balance After
+      <input type="number" name="newbalanceDest" min="0" step="0.01" value="10000" required>
+    </label>
+
+    <label>Flagged by Rule Engine
+      <select name="isFlaggedFraud">
+        <option value="0" selected>No</option>
+        <option value="1">Yes</option>
+      </select>
+    </label>
+
+    <button type="submit" class="button">Analyse Transaction</button>
+  </form>
+
+  <article class="card">
+    <h2>Prediction Result</h2>
+    {% if result %}
+      <div class="result-panel {{ 'fraud' if result.is_fraud else 'legit' }}">
+        <p class="result-label">{{ 'Fraudulent' if result.is_fraud else 'Legitimate' }}</p>
+        <p class="result-score">Probability: {{ '%.2f%%'|format(result.fraud_probability * 100) }}</p>
+        <p>Risk Level: <strong>{{ result.risk_level }}</strong></p>
+        <p>Model: {{ result.model.replace('_', ' ').title() }}</p>
+        <p>Type: {{ result.transaction_type }} | Amount: {{ result.amount }}</p>
+      </div>
+    {% else %}
+      <p class="muted">Submit a transaction to see the fraud score.</p>
+    {% endif %}
+
+    <h3>Tips</h3>
+    <ul class="tips">
+      <li>Accounts with no prior legitimate activity are higher risk.</li>
+      <li>Unknown origin/destination IDs often indicate suspicious behaviour in this dataset.</li>
+      <li>Use known legitimate account IDs from the dataset for lower risk scores.</li>
+    </ul>
+  </article>
+</div>
+</div>
+{% endblock %}

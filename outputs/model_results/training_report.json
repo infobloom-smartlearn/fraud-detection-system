@@ -1,0 +1,150 @@
+{
+  "train_rows": 3174,
+  "test_rows": 794,
+  "feature_columns": [
+    "step",
+    "amount",
+    "oldbalanceOrg",
+    "newbalanceOrig",
+    "oldbalanceDest",
+    "newbalanceDest",
+    "balance_change_orig",
+    "balance_change_dest",
+    "orig_balance_error",
+    "dest_balance_error",
+    "amount_log",
+    "hour_of_day",
+    "day_of_simulation",
+    "type_CASH_IN",
+    "type_CASH_OUT",
+    "type_DEBIT",
+    "type_PAYMENT",
+    "type_TRANSFER",
+    "isFlaggedFraud"
+  ],
+  "models_trained": [
+    "logistic_regression",
+    "decision_tree",
+    "random_forest",
+    "xgboost"
+  ],
+  "best_model": "logistic_regression",
+  "metrics": [
+    {
+      "model": "logistic_regression",
+      "accuracy": 0.5176,
+      "precision": 0.5174,
+      "recall": 0.5239,
+      "f1_score": 0.5207,
+      "roc_auc": 0.5193
+    },
+    {
+      "model": "xgboost",
+      "accuracy": 0.5189,
+      "precision": 0.5193,
+      "recall": 0.5088,
+      "f1_score": 0.514,
+      "roc_auc": 0.5234
+    },
+    {
+      "model": "random_forest",
+      "accuracy": 0.5088,
+      "precision": 0.5089,
+      "recall": 0.5038,
+      "f1_score": 0.5063,
+      "roc_auc": 0.5194
+    },
+    {
+      "model": "decision_tree",
+      "accuracy": 0.4899,
+      "precision": 0.4863,
+      "recall": 0.3577,
+      "f1_score": 0.4122,
+      "roc_auc": 0.5085
+    }
+  ],
+  "detailed_results": [
+    {
+      "model": "logistic_regression",
+      "accuracy": 0.5176,
+      "precision": 0.5174,
+      "recall": 0.5239,
+      "f1_score": 0.5207,
+      "roc_auc": 0.5193,
+      "confusion_matrix": [
+        [
+          203,
+          194
+        ],
+        [
+          189,
+          208
+        ]
+      ],
+      "classification_report": "              precision    recall  f1-score   support\n\n           0       0.52      0.51      0.51       397\n           1       0.52      0.52      0.52       397\n\n    accuracy                           0.52       794\n   macro avg       0.52      0.52      0.52       794\nweighted avg       0.52      0.52      0.52       794\n"
+    },
+    {
+      "model": "decision_tree",
+      "accuracy": 0.4899,
+      "precision": 0.4863,
+      "recall": 0.3577,
+      "f1_score": 0.4122,
+      "roc_auc": 0.5085,
+      "confusion_matrix": [
+        [
+          247,
+          150
+        ],
+        [
+          255,
+          142
+        ]
+      ],
+      "classification_report": "              precision    recall  f1-score   support\n\n           0       0.49      0.62      0.55       397\n           1       0.49      0.36      0.41       397\n\n    accuracy                           0.49       794\n   macro avg       0.49      0.49      0.48       794\nweighted avg       0.49      0.49      0.48       794\n"
+    },
+    {
+      "model": "random_forest",
+      "accuracy": 0.5088,
+      "precision": 0.5089,
+      "recall": 0.5038,
+      "f1_score": 0.5063,
+      "roc_auc": 0.5194,
+      "confusion_matrix": [
+        [
+          204,
+          193
+        ],
+        [
+          197,
+          200
+        ]
+      ],
+      "classification_report": "              precision    recall  f1-score   support\n\n           0       0.51      0.51      0.51       397\n           1       0.51      0.50      0.51       397\n\n    accuracy                           0.51       794\n   macro avg       0.51      0.51      0.51       794\nweighted avg       0.51      0.51      0.51       794\n"
+    },
+    {
+      "model": "xgboost",
+      "accuracy": 0.5189,
+      "precision": 0.5193,
+      "recall": 0.5088,
+      "f1_score": 0.514,
+      "roc_auc": 0.5234,
+      "confusion_matrix": [
+        [
+          210,
+          187
+        ],
+        [
+          195,
+          202
+        ]
+      ],
+      "classification_report": "              precision    recall  f1-score   support\n\n           0       0.52      0.53      0.52       397\n           1       0.52      0.51      0.51       397\n\n    accuracy                           0.52       794\n   macro avg       0.52      0.52      0.52       794\nweighted avg       0.52      0.52      0.52       794\n"
+    }
+  ],
+  "saved_models": {
+    "logistic_regression": "C:\\Users\\hp\\Desktop\\FraudDetectionSystem\\models\\logistic_regression.joblib",
+    "decision_tree": "C:\\Users\\hp\\Desktop\\FraudDetectionSystem\\models\\decision_tree.joblib",
+    "random_forest": "C:\\Users\\hp\\Desktop\\FraudDetectionSystem\\models\\random_forest.joblib",
+    "xgboost": "C:\\Users\\hp\\Desktop\\FraudDetectionSystem\\models\\xgboost.joblib"
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "figures": {
+    "figure_4_1_system_architecture.png": "C:\\Users\\hp\\Desktop\\FraudDetectionSystem\\outputs\\model_results\\figures\\figure_4_1_system_architecture.png",
+    "confusion_matrix_decision_tree.png": "C:\\Users\\hp\\Desktop\\FraudDetectionSystem\\outputs\\model_results\\figures\\confusion_matrix_decision_tree.png",
+    "confusion_matrix_logistic_regression.png": "C:\\Users\\hp\\Desktop\\FraudDetectionSystem\\outputs\\model_results\\figures\\confusion_matrix_logistic_regression.png",
+    "confusion_matrix_xgboost.png": "C:\\Users\\hp\\Desktop\\FraudDetectionSystem\\outputs\\model_results\\figures\\confusion_matrix_xgboost.png",
+    "confusion_matrix_random_forest.png": "C:\\Users\\hp\\Desktop\\FraudDetectionSystem\\outputs\\model_results\\figures\\confusion_matrix_random_forest.png",
+    "roc_curves_comparison.png": "C:\\Users\\hp\\Desktop\\FraudDetectionSystem\\outputs\\model_results\\figures\\roc_curves_comparison.png",
+    "metrics_comparison.png": "C:\\Users\\hp\\Desktop\\FraudDetectionSystem\\outputs\\model_results\\figures\\metrics_comparison.png"
+  },
+  "metrics": [
+    {
+      "model": "decision_tree",
+      "accuracy": 0.9194,
+      "precision": 0.8758,
+      "recall": 0.9773,
+      "f1_score": 0.9238,
+      "roc_auc": 0.9871
+    },
+    {
+      "model": "logistic_regression",
+      "accuracy": 0.8438,
+      "precision": 0.762,
+      "recall": 1.0,
+      "f1_score": 0.8649,
+      "roc_auc": 1.0
+    },
+    {
+      "model": "xgboost",
+      "accuracy": 0.8224,
+      "precision": 1.0,
+      "recall": 0.6448,
+      "f1_score": 0.7841,
+      "roc_auc": 1.0
+    },
+    {
+      "model": "random_forest",
+      "accuracy": 0.7922,
+      "precision": 0.7064,
+      "recall": 1.0,
+      "f1_score": 0.8279,
+      "roc_auc": 1.0
+    }
+  ]
+}

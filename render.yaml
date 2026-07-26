@@ -4,8 +4,8 @@ services:
     name: fraud-detection-system
     runtime: python
     plan: free
-    buildCommand: pip install -r requirements-prod.txt
-    startCommand: gunicorn wsgi:app --bind 0.0.0.0:$PORT --workers 1 --threads 1 --timeout 120 --preload
+    buildCommand: pip install -r requirements-prod.txt && python scripts/decompress_registry_db.py
+    startCommand: gunicorn wsgi:app --bind 0.0.0.0:$PORT --workers 1 --threads 1 --timeout 120
     healthCheckPath: /health
     envVars:
       - key: PYTHON_VERSION

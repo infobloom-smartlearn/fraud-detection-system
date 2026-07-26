@@ -24,6 +24,9 @@ outputs/model_results/*.png
 
 # Redundant model artefacts (pipeline bundle is sufficient for deploy)
 models/account_registry.joblib
+models/account_registry.db
+models/account_registry.db-shm
+models/account_registry.db-wal
 models/fraud_detection_pipeline.joblib
 models/random_forest*.joblib
 models/xgboost*.joblib
@@ -32,7 +35,7 @@ models/decision_tree.joblib
 
 # Keep for deployment:
 # models/fraud_detection_pipeline_deploy.joblib
-# models/account_registry.db
+# models/account_registry.db.gz
 # models/best_model.joblib
 # outputs/model_results/model_comparison_latest.csv
 # outputs/model_results/training_report_tuned.json

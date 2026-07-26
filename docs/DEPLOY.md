@@ -7,17 +7,26 @@ This guide deploys the Flask fraud detection prototype as a Render **Web Service
 | Included | Excluded (via `.gitignore`) |
 |---|---|
 | `app/`, `src/dataset_utils.py`, `wsgi.py` | Raw dataset CSVs (`data/`) |
-| `models/fraud_detection_pipeline.joblib` (~45 MB) | Processed training CSVs |
-| `models/best_model.joblib`, `models/decision_tree_tuned.joblib` | Redundant model copies |
+| `models/fraud_detection_pipeline_deploy.joblib` (~4 KB) | Full in-memory pipeline (~45 MB) |
+| `models/account_registry.db.gz` (compressed registry) | Uncompressed `account_registry.db` |
 | `outputs/model_results/model_comparison_latest.csv` | EDA plots |
 | `outputs/model_results/training_report_tuned.json` | |
 
+## Why deploy artefacts?
+
+Render's **free tier has 512 MB RAM**. The full `fraud_detection_pipeline.joblib` loads ~1.5 million account IDs into Python sets and exceeds that limit. Deploy artefacts use:
+
+- A **slim pipeline** (`fraud_detection_pipeline_deploy.joblib`) — model + scaler only
+- A **SQLite registry** (`account_registry.db`) — account lookups from disk, minimal RAM
+
 ## Prerequisites
 
-1. Trained model artefacts (run locally first):
+1. Train models and export deploy artefacts locally:
 
    ```powershell
    python scripts/train_fast.py
+   python scripts/export_deploy_artifacts.py
+   python scripts/compress_registry_db.py
    ```
 
 2. A [GitHub](https://github.com) account  
@@ -38,9 +47,9 @@ git push -u origin main
 ```
 
 > **Important:** Initialise git inside `FraudDetectionSystem`, not your user home folder.  
-> The `.gitignore` excludes dataset files but **includes** the trained pipeline (~45 MB).
+> Commit `fraud_detection_pipeline_deploy.joblib` and `account_registry.db.gz` (not the 45 MB pipeline).
 
-If GitHub rejects a file over 100 MB, use [Git LFS](https://git-lfs.github.com/) for `models/fraud_detection_pipeline.joblib`.
+If `account_registry.db.gz` exceeds 100 MB, use [Git LFS](https://git-lfs.github.com/) for that file.
 
 ## Step 2 — Create the Render service
 
@@ -51,58 +60,40 @@ If GitHub rejects a file over 100 MB, use [Git LFS](https://git-lfs.github.com/)
 3. Render reads `render.yaml` and creates the web service automatically
 4. Click **Apply**
 
+The build command decompresses the registry DB:
+
+`pip install -r requirements-prod.txt && python scripts/decompress_registry_db.py`
+
 ### Option B — Manual setup
 
-1. **New** → **Web Service** → connect your repo  
-2. Configure:
+| Setting | Value |
+|---|---|
+| **Build Command** | `pip install -r requirements-prod.txt && python scripts/decompress_registry_db.py` |
+| **Start Command** | `gunicorn wsgi:app --bind 0.0.0.0:$PORT --workers 1 --threads 1 --timeout 120` |
+| **Health Check Path** | `/health` |
 
-   | Setting | Value |
-   |---|---|
-   | **Language** | Python 3 |
-   | **Build Command** | `pip install -r requirements-prod.txt` |
-   | **Start Command** | `gunicorn wsgi:app --bind 0.0.0.0:$PORT --workers 1 --threads 2 --timeout 120` |
-   | **Health Check Path** | `/health` |
-
-3. **Environment variables**
-
-   | Key | Value |
-   |---|---|
-   | `PYTHON_VERSION` | `3.12.0` |
-   | `FLASK_ENV` | `production` |
-   | `SECRET_KEY` | Generate a random secret (Render can auto-generate) |
-
-4. Choose **Free** plan (or paid for always-on) → **Create Web Service**
+Environment variables: `PYTHON_VERSION=3.12.0`, `FLASK_ENV=production`, `SECRET_KEY` (auto-generate).
 
 ## Step 3 — Verify deployment
 
-After the build completes (first deploy may take 3–5 minutes):
-
-- App URL: `https://YOUR-SERVICE.onrender.com`
-- Health check: `https://YOUR-SERVICE.onrender.com/health`  
-  Expected: `{"status":"ok","model_loaded":true}`
+- Health: `https://YOUR-SERVICE.onrender.com/health` → `{"status":"ok","model_loaded":true}`
+- Overview: `https://YOUR-SERVICE.onrender.com/`
 
 ## Local production test
 
-Test the same command Render uses:
-
 ```powershell
 pip install -r requirements-prod.txt
-gunicorn wsgi:app --bind 0.0.0.0:5000 --workers 1 --timeout 120
+python scripts/decompress_registry_db.py
+$env:FLASK_ENV="production"
+gunicorn wsgi:app --bind 0.0.0.0:5000 --workers 1 --threads 1 --timeout 120
 ```
-
-Open http://127.0.0.1:5000
-
-## Free tier notes
-
-- Services **sleep after ~15 minutes** of inactivity; the first request after idle can take 30–60 seconds (model load + cold start).
-- Free instances have **512 MB RAM** — the app uses **1 Gunicorn worker** to avoid loading the model twice.
-- Upgrade to a paid instance for always-on production use.
 
 ## Troubleshooting
 
 | Issue | Fix |
 |---|---|
-| `model_loaded: false` | Ensure `models/fraud_detection_pipeline.joblib` was committed and pushed |
-| Build timeout | Use `requirements-prod.txt` (not full `requirements.txt`) |
-| Worker timeout on start | Increase Gunicorn `--timeout` (already set to 120s) |
-| Out of memory | Keep `--workers 1`; remove extra model files from the repo |
+| `Out of memory (used over 512Mi)` | Ensure deploy artefacts are committed, not `fraud_detection_pipeline.joblib` |
+| `InconsistentVersionWarning` sklearn | Production pins `scikit-learn==1.8.0` in `requirements-prod.txt` |
+| `model_loaded: false` | Run export + compress locally; push `*_deploy.joblib` and `account_registry.db.gz` |
+| GitHub rejects push (>100 MB) | Run `compress_registry_db.py`; use Git LFS if still too large |
+| Build timeout | Registry decompress adds ~1 min on first build; normal |

@@ -17,7 +17,10 @@ def main() -> None:
   db_mb = db_path.stat().st_size / (1024 * 1024)
   print(f"Deploy pipeline: {deploy_path} ({deploy_mb:.2f} MB)")
   print(f"Registry DB:     {db_path} ({db_mb:.2f} MB)")
-  print("Commit both files before deploying to Render.")
+  gz_path = db_path.with_suffix(db_path.suffix + ".gz")
+  if gz_path.exists():
+    print(f"Registry archive: {gz_path} ({gz_path.stat().st_size / (1024 * 1024):.1f} MB)")
+  print("Commit fraud_detection_pipeline_deploy.joblib and account_registry.db.gz before deploying.")
 
 
 if __name__ == "__main__":

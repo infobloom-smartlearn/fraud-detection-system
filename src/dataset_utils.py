@@ -557,17 +557,83 @@ def export_deploy_artifacts(
 ) -> tuple[Path, Path]:
   """Build SQLite-backed deploy artefacts for low-memory hosting (e.g. Render free tier)."""
   models_dir = models_dir or MODELS_DIR
-  pipeline_path = pipeline_path or models_dir / "fraud_detection_pipeline.joblib"
-  if not pipeline_path.exists():
-    raise FileNotFoundError(f"Pipeline not found: {pipeline_path}")
-
-  pipeline = joblib.load(pipeline_path)
   db_path = models_dir / DEPLOY_REGISTRY_NAME
-  pipeline.account_registry.save_sqlite(db_path)
+  deploy_path = models_dir / DEPLOY_PIPELINE_NAME
+  results_dir = PROJECT_ROOT / "outputs" / "model_results"
+
+  if not db_path.exists():
+    registry_source = models_dir / "account_registry.joblib"
+    if not registry_source.exists():
+      pipeline_path = pipeline_path or models_dir / "fraud_detection_pipeline.joblib"
+      if not pipeline_path.exists():
+        raise FileNotFoundError(
+          "No registry source found. Train models first or provide account_registry.joblib."
+        )
+      pipeline = joblib.load(pipeline_path)
+      pipeline.account_registry.save_sqlite(db_path)
+    else:
+      registry = joblib.load(registry_source)
+      registry.save_sqlite(db_path)
+      del registry
+
+  report_path = results_dir / "training_report_tuned.json"
+  if not report_path.exists():
+    report_path = results_dir / "training_report.json"
+  if not report_path.exists():
+    pipeline_path = pipeline_path or models_dir / "fraud_detection_pipeline.joblib"
+    if pipeline_path.exists():
+      pipeline = joblib.load(pipeline_path)
+      deploy_registry = AccountLegitimacyRegistry(db_path=DEPLOY_REGISTRY_REL)
+      pipeline.account_registry = deploy_registry
+      joblib.dump(pipeline, deploy_path)
+      return deploy_path, db_path
+    raise FileNotFoundError("training_report_tuned.json not found.")
+
+  report = json.loads(report_path.read_text(encoding="utf-8"))
+  best_name = report["best_model"]
+  best_metrics = next(m for m in report["metrics"] if m["model"] == best_name)
+  threshold = float(best_metrics.get("threshold", 0.5))
+
+  model_path = models_dir / f"{best_name}_tuned.joblib"
+  if not model_path.exists():
+    model_path = models_dir / "best_model.joblib"
+  best_model = joblib.load(model_path)
+
+  scaler_path = PROCESSED_TUNED_DIR / "scaler.joblib"
+  if scaler_path.exists():
+    scaler = joblib.load(scaler_path)
+  else:
+    pipeline_path = pipeline_path or models_dir / "fraud_detection_pipeline.joblib"
+    if pipeline_path.exists():
+      scaler = joblib.load(pipeline_path).scaler
+    else:
+      scaler = StandardScaler()
 
   deploy_registry = AccountLegitimacyRegistry(db_path=DEPLOY_REGISTRY_REL)
-  pipeline.account_registry = deploy_registry
-
-  deploy_path = models_dir / DEPLOY_PIPELINE_NAME
+  pipeline = FraudDetectionPipeline(
+    model=best_model,
+    scaler=scaler,
+    account_registry=deploy_registry,
+    feature_columns=FEATURE_COLUMNS,
+    model_name=best_name,
+    threshold=threshold,
+    use_scaled_inputs=False,
+  )
   joblib.dump(pipeline, deploy_path)
+
+  gz_path = db_path.with_suffix(db_path.suffix + ".gz")
+  try:
+    import gzip
+    import shutil
+
+    with db_path.open("rb") as src, gzip.open(gz_path, "wb", compresslevel=9) as dst:
+      shutil.copyfileobj(src, dst)
+  except OSError as exc:
+    print(f"Note: could not compress registry DB: {exc}", flush=True)
+  else:
+    print(
+      f"Registry archive: {gz_path.name} ({gz_path.stat().st_size / (1024 * 1024):.1f} MB)",
+      flush=True,
+    )
+
   return deploy_path, db_path

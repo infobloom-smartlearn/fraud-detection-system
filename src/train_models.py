@@ -393,6 +393,11 @@ def main(force_rebuild: bool = False, quick: bool = False) -> None:
   joblib.dump(inference_pipeline, MODELS_DIR / "fraud_detection_pipeline.joblib")
   joblib.dump(account_registry, MODELS_DIR / "account_registry.joblib")
 
+  from dataset_utils import export_deploy_artifacts
+
+  deploy_path, db_path = export_deploy_artifacts()
+  print(f"Deploy artefacts: {deploy_path.name}, {db_path.name}", flush=True)
+
   metrics_df.to_csv(RESULTS_DIR / "model_comparison_tuned.csv", index=False)
   metrics_df.to_csv(RESULTS_DIR / "model_comparison.csv", index=False)
   plot_roc_curves(all_results, y_test, RESULTS_DIR / "roc_curves_tuned.png")

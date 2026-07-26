@@ -12,6 +12,8 @@ venv/
 .vscode/
 .DS_Store
 Thumbs.db
+~$*
+docs/~$*
 
 # Training data (too large for Git — not needed at runtime)
 data/Cifer-Fraud-Detection-Dataset-AF/

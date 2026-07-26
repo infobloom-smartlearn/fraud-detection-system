@@ -14,7 +14,10 @@ from flask import Flask, flash, jsonify, render_template, request
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
-from dataset_utils import FraudDetectionPipeline
+from dataset_utils import (
+  DEPLOY_PIPELINE_NAME,
+  FraudDetectionPipeline,
+)
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "dev-only-change-in-production")
@@ -22,43 +25,83 @@ app.secret_key = os.environ.get("SECRET_KEY", "dev-only-change-in-production")
 MODELS_DIR = PROJECT_ROOT / "models"
 RESULTS_DIR = PROJECT_ROOT / "outputs" / "model_results"
 
+_pipeline: FraudDetectionPipeline | None = None
+_metrics_df: pd.DataFrame | None = None
+_training_report: dict | None = None
+
+
+def _resolve_registry_path(registry: object) -> None:
+  db_path = getattr(registry, "_db_path", None)
+  if not db_path:
+    return
+  path = Path(db_path)
+  if not path.is_absolute():
+    registry._db_path = str(MODELS_DIR / path.name)
+
 
 def load_pipeline() -> FraudDetectionPipeline | None:
-  pipeline_path = MODELS_DIR / "fraud_detection_pipeline.joblib"
-  if pipeline_path.exists():
-    return joblib.load(pipeline_path)
+  deploy_path = MODELS_DIR / DEPLOY_PIPELINE_NAME
+  legacy_path = MODELS_DIR / "fraud_detection_pipeline.joblib"
+
+  if deploy_path.exists():
+    pipeline = joblib.load(deploy_path)
+    _resolve_registry_path(pipeline.account_registry)
+    return pipeline
+
+  if os.environ.get("FLASK_ENV") == "production":
+    print(
+      "WARNING: Deploy pipeline missing. Run: python scripts/export_deploy_artifacts.py",
+      flush=True,
+    )
+    return None
+
+  if legacy_path.exists():
+    return joblib.load(legacy_path)
   return None
 
 
-def load_model_metrics() -> pd.DataFrame | None:
-  for name in ("model_comparison_latest.csv", "model_comparison_tuned.csv", "model_comparison.csv"):
-    metrics_path = RESULTS_DIR / name
-    if metrics_path.exists():
-      return pd.read_csv(metrics_path)
-  return None
+def get_pipeline() -> FraudDetectionPipeline | None:
+  global _pipeline
+  if _pipeline is None:
+    _pipeline = load_pipeline()
+  return _pipeline
 
 
-def load_training_report() -> dict:
-  report_path = RESULTS_DIR / "training_report_tuned.json"
-  if not report_path.exists():
-    report_path = RESULTS_DIR / "training_report.json"
-  if report_path.exists():
-    return json.loads(report_path.read_text(encoding="utf-8"))
-  return {}
+def get_model_metrics() -> pd.DataFrame | None:
+  global _metrics_df
+  if _metrics_df is None:
+    for name in ("model_comparison_latest.csv", "model_comparison_tuned.csv", "model_comparison.csv"):
+      metrics_path = RESULTS_DIR / name
+      if metrics_path.exists():
+        _metrics_df = pd.read_csv(metrics_path)
+        break
+  return _metrics_df
 
 
-pipeline = load_pipeline()
-metrics_df = load_model_metrics()
-training_report = load_training_report()
+def get_training_report() -> dict:
+  global _training_report
+  if _training_report is None:
+    report_path = RESULTS_DIR / "training_report_tuned.json"
+    if not report_path.exists():
+      report_path = RESULTS_DIR / "training_report.json"
+    if report_path.exists():
+      _training_report = json.loads(report_path.read_text(encoding="utf-8"))
+    else:
+      _training_report = {}
+  return _training_report
 
 
 @app.route("/health")
 def health():
+  pipeline = get_pipeline()
   return jsonify({"status": "ok", "model_loaded": pipeline is not None}), 200
 
 
 @app.route("/")
 def index():
+  pipeline = get_pipeline()
+  training_report = get_training_report()
+  metrics_df = get_model_metrics()
   best_model_key = training_report.get("best_model", "unknown")
   best_model = best_model_key.replace("_", " ").title()
   metrics = metrics_df.to_dict(orient="records") if metrics_df is not None else []
@@ -95,8 +138,9 @@ def index():
 
 @app.route("/predict", methods=["GET", "POST"])
 def predict():
+  pipeline = get_pipeline()
   if pipeline is None:
-    flash("Model not found. Run `python src/train_models.py --rebuild` first.", "error")
+    flash("Model not found. Run `python scripts/export_deploy_artifacts.py` after training.", "error")
     return render_template("predict.html", model_ready=False, result=None)
 
   result = None
@@ -123,6 +167,7 @@ def predict():
 
 @app.route("/api/predict", methods=["POST"])
 def api_predict():
+  pipeline = get_pipeline()
   if pipeline is None:
     return jsonify({"error": "Model not trained yet."}), 503
 
@@ -141,6 +186,7 @@ def api_predict():
 
 @app.route("/api/metrics")
 def api_metrics():
+  metrics_df = get_model_metrics()
   if metrics_df is None:
     return jsonify({"error": "Metrics not available."}), 404
   return jsonify(metrics_df.to_dict(orient="records"))

@@ -192,6 +192,11 @@ def main() -> None:
   joblib.dump(pipeline, MODELS_DIR / "fraud_detection_pipeline.joblib")
   joblib.dump(registry, MODELS_DIR / "account_registry.joblib")
 
+  from dataset_utils import export_deploy_artifacts
+
+  deploy_path, db_path = export_deploy_artifacts()
+  print(f"Deploy artefacts: {deploy_path.name}, {db_path.name}", flush=True)
+
   try:
     save_tuned_dataset(df, X_train_s, y_train, X_test_s, y_test, scaler, registry, report)
   except PermissionError:

@@ -41,9 +41,11 @@ class ThresholdClassifier:
 class AccountLegitimacyRegistry:
   """Accounts observed in legitimate transactions across the training corpus."""
 
-  def __init__(self):
+  def __init__(self, db_path: str | Path | None = None):
     self.legitimate_origins: set[str] = set()
     self.legitimate_destinations: set[str] = set()
+    self._db_path = str(db_path) if db_path else None
+    self._conn = None
 
   def fit_from_dataframe(self, df: pd.DataFrame) -> AccountLegitimacyRegistry:
     legit = df.loc[df[TARGET_COLUMN] == 0]
@@ -51,16 +53,89 @@ class AccountLegitimacyRegistry:
     self.legitimate_destinations = set(legit["nameDest"].astype(str))
     return self
 
+  def uses_sqlite(self) -> bool:
+    return bool(self._db_path)
+
+  def _connection(self):
+    if not self._db_path:
+      return None
+    if self._conn is None:
+      import sqlite3
+
+      self._conn = sqlite3.connect(self._db_path, check_same_thread=False)
+    return self._conn
+
+  def _is_legit_origin(self, name: str) -> int:
+    conn = self._connection()
+    if conn is None:
+      return int(str(name) in self.legitimate_origins)
+    row = conn.execute(
+      "SELECT 1 FROM legitimate_origins WHERE name = ? LIMIT 1",
+      (str(name),),
+    ).fetchone()
+    return int(row is not None)
+
+  def _is_legit_dest(self, name: str) -> int:
+    conn = self._connection()
+    if conn is None:
+      return int(str(name) in self.legitimate_destinations)
+    row = conn.execute(
+      "SELECT 1 FROM legitimate_destinations WHERE name = ? LIMIT 1",
+      (str(name),),
+    ).fetchone()
+    return int(row is not None)
+
+  def save_sqlite(self, path: str | Path) -> Path:
+    import sqlite3
+
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if path.exists():
+      path.unlink()
+
+    conn = sqlite3.connect(path)
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute(
+      "CREATE TABLE legitimate_origins (name TEXT PRIMARY KEY NOT NULL)"
+    )
+    conn.execute(
+      "CREATE TABLE legitimate_destinations (name TEXT PRIMARY KEY NOT NULL)"
+    )
+
+    def _insert_many(table: str, values: set[str]) -> None:
+      batch: list[tuple[str]] = []
+      for value in values:
+        batch.append((str(value),))
+        if len(batch) >= 5000:
+          conn.executemany(f"INSERT OR IGNORE INTO {table} VALUES (?)", batch)
+          batch.clear()
+      if batch:
+        conn.executemany(f"INSERT OR IGNORE INTO {table} VALUES (?)", batch)
+
+    _insert_many("legitimate_origins", self.legitimate_origins)
+    _insert_many("legitimate_destinations", self.legitimate_destinations)
+    conn.commit()
+    conn.close()
+    return path
+
+  @classmethod
+  def from_sqlite(cls, db_path: str | Path) -> AccountLegitimacyRegistry:
+    return cls(db_path=db_path)
+
   def transform(self, df: pd.DataFrame) -> pd.DataFrame:
     out = df.copy()
-    out["orig_in_global_legit"] = out["nameOrig"].astype(str).isin(self.legitimate_origins).astype(int)
-    out["dest_in_global_legit"] = out["nameDest"].astype(str).isin(self.legitimate_destinations).astype(int)
+    if self._db_path:
+      out["orig_in_global_legit"] = out["nameOrig"].astype(str).map(self._is_legit_origin)
+      out["dest_in_global_legit"] = out["nameDest"].astype(str).map(self._is_legit_dest)
+    else:
+      out["orig_in_global_legit"] = out["nameOrig"].astype(str).isin(self.legitimate_origins).astype(int)
+      out["dest_in_global_legit"] = out["nameDest"].astype(str).isin(self.legitimate_destinations).astype(int)
     return out
 
   def lookup(self, name_orig: str, name_dest: str) -> dict[str, int]:
     return {
-      "orig_in_global_legit": int(str(name_orig) in self.legitimate_origins),
-      "dest_in_global_legit": int(str(name_dest) in self.legitimate_destinations),
+      "orig_in_global_legit": self._is_legit_origin(name_orig),
+      "dest_in_global_legit": self._is_legit_dest(name_dest),
     }
 
 
@@ -468,3 +543,31 @@ def save_tuned_dataset(
   with meta_path.open("w", encoding="utf-8") as f:
     json.dump(report, f, indent=2)
   return PROCESSED_TUNED_DIR
+
+
+MODELS_DIR = PROJECT_ROOT / "models"
+DEPLOY_PIPELINE_NAME = "fraud_detection_pipeline_deploy.joblib"
+DEPLOY_REGISTRY_NAME = "account_registry.db"
+DEPLOY_REGISTRY_REL = DEPLOY_REGISTRY_NAME
+
+
+def export_deploy_artifacts(
+  pipeline_path: Path | None = None,
+  models_dir: Path | None = None,
+) -> tuple[Path, Path]:
+  """Build SQLite-backed deploy artefacts for low-memory hosting (e.g. Render free tier)."""
+  models_dir = models_dir or MODELS_DIR
+  pipeline_path = pipeline_path or models_dir / "fraud_detection_pipeline.joblib"
+  if not pipeline_path.exists():
+    raise FileNotFoundError(f"Pipeline not found: {pipeline_path}")
+
+  pipeline = joblib.load(pipeline_path)
+  db_path = models_dir / DEPLOY_REGISTRY_NAME
+  pipeline.account_registry.save_sqlite(db_path)
+
+  deploy_registry = AccountLegitimacyRegistry(db_path=DEPLOY_REGISTRY_REL)
+  pipeline.account_registry = deploy_registry
+
+  deploy_path = models_dir / DEPLOY_PIPELINE_NAME
+  joblib.dump(pipeline, deploy_path)
+  return deploy_path, db_path

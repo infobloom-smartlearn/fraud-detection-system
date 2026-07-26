@@ -49,7 +49,7 @@ git push -u origin main
 > **Important:** Initialise git inside `FraudDetectionSystem`, not your user home folder.  
 > Commit `fraud_detection_pipeline_deploy.joblib` and `account_registry.db.gz` (not the 45 MB pipeline).
 
-If `account_registry.db.gz` exceeds 100 MB, use [Git LFS](https://git-lfs.github.com/) for that file.
+The compressed registry is ~47 MB — **under GitHub's 100 MB file limit**. Store it as a **regular git file** (do **not** use Git LFS; free LFS quotas are easy to exceed).
 
 ## Step 2 — Create the Render service
 
@@ -95,5 +95,7 @@ gunicorn wsgi:app --bind 0.0.0.0:5000 --workers 1 --threads 1 --timeout 120
 | `Out of memory (used over 512Mi)` | Ensure deploy artefacts are committed, not `fraud_detection_pipeline.joblib` |
 | `InconsistentVersionWarning` sklearn | Production pins `scikit-learn==1.8.0` in `requirements-prod.txt` |
 | `model_loaded: false` | Run export + compress locally; push `*_deploy.joblib` and `account_registry.db.gz` |
-| GitHub rejects push (>100 MB) | Run `compress_registry_db.py`; use Git LFS if still too large |
+| `registry_ready: false` on `/health` | Build failed to decompress registry; check Render build logs |
+| GitHub LFS budget exceeded | Remove LFS: delete `.gitattributes`, run `git lfs untrack models/account_registry.db.gz`, re-add the file as regular git |
+| GitHub rejects push (>100 MB) | Run `compress_registry_db.py` to shrink the archive |
 | Build timeout | Registry decompress adds ~1 min on first build; normal |

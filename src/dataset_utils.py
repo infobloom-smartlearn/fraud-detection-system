@@ -38,6 +38,27 @@ class ThresholdClassifier:
     return (proba >= self.threshold).astype(int)
 
 
+MIN_REGISTRY_DB_BYTES = 10 * 1024 * 1024
+
+
+def is_valid_registry_db(db_path: str | Path) -> bool:
+  """Return True when the SQLite registry exists and has the expected schema."""
+  path = Path(db_path)
+  if not path.is_file() or path.stat().st_size < MIN_REGISTRY_DB_BYTES:
+    return False
+
+  import sqlite3
+
+  conn = sqlite3.connect(path)
+  try:
+    row = conn.execute(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='legitimate_origins'"
+    ).fetchone()
+    return row is not None
+  finally:
+    conn.close()
+
+
 class AccountLegitimacyRegistry:
   """Accounts observed in legitimate transactions across the training corpus."""
 
@@ -56,9 +77,20 @@ class AccountLegitimacyRegistry:
   def uses_sqlite(self) -> bool:
     return bool(self._db_path)
 
+  def ensure_ready(self) -> None:
+    """Verify the SQLite registry is present and usable (for deploy startup checks)."""
+    if not self._db_path:
+      return
+    if not is_valid_registry_db(self._db_path):
+      raise RuntimeError(
+        f"Account registry database missing or invalid at {self._db_path}. "
+        "Run `python scripts/decompress_registry_db.py` during build."
+      )
+
   def _connection(self):
     if not self._db_path:
       return None
+    self.ensure_ready()
     if self._conn is None:
       import sqlite3
 
@@ -200,6 +232,8 @@ class FraudDetectionPipeline:
 
   def predict(self, records: list[dict] | dict) -> list[dict]:
     frame = self.prepare_frame(records)
+    if frame.empty:
+      raise ValueError("No valid transaction rows after validation (check step, amount, and balances).")
     features = self._feature_matrix(frame)
     if hasattr(self.model, "predict"):
       if hasattr(self.model, "estimator"):

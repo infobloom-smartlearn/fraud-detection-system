@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import sys
 from pathlib import Path
@@ -17,6 +18,14 @@ sys.path.insert(0, str(PROJECT_ROOT / "src"))
 from dataset_utils import (
   DEPLOY_PIPELINE_NAME,
   FraudDetectionPipeline,
+  is_valid_registry_db,
+)
+
+logger = logging.getLogger(__name__)
+
+logging.basicConfig(
+  level=logging.INFO,
+  format="%(asctime)s %(levelname)s %(name)s: %(message)s",
 )
 
 app = Flask(__name__)
@@ -46,6 +55,15 @@ def load_pipeline() -> FraudDetectionPipeline | None:
   if deploy_path.exists():
     pipeline = joblib.load(deploy_path)
     _resolve_registry_path(pipeline.account_registry)
+    if pipeline.account_registry.uses_sqlite():
+      db_path = Path(pipeline.account_registry._db_path)
+      if not is_valid_registry_db(db_path):
+        logger.error(
+          "Deploy pipeline loaded but registry DB is missing or invalid at %s",
+          db_path,
+        )
+        return None
+      pipeline.account_registry.ensure_ready()
     return pipeline
 
   if os.environ.get("FLASK_ENV") == "production":
@@ -94,7 +112,22 @@ def get_training_report() -> dict:
 @app.route("/health")
 def health():
   pipeline = get_pipeline()
-  return jsonify({"status": "ok", "model_loaded": pipeline is not None}), 200
+  registry_ready = True
+  registry_path = None
+  if pipeline is not None and pipeline.account_registry.uses_sqlite():
+    registry_path = pipeline.account_registry._db_path
+    registry_ready = is_valid_registry_db(registry_path)
+
+  healthy = pipeline is not None and registry_ready
+  status_code = 200 if healthy else 503
+  return jsonify(
+    {
+      "status": "ok" if healthy else "degraded",
+      "model_loaded": pipeline is not None,
+      "registry_ready": registry_ready,
+      "registry_path": registry_path,
+    }
+  ), status_code
 
 
 @app.route("/")
@@ -145,6 +178,7 @@ def predict():
 
   result = None
   if request.method == "POST":
+    payload = None
     try:
       payload = {
         "step": float(request.form.get("step", 0)),
@@ -161,6 +195,13 @@ def predict():
       result = pipeline.predict(payload)[0]
     except (TypeError, ValueError) as exc:
       flash(f"Invalid input: {exc}", "error")
+    except Exception as exc:
+      logger.exception("Prediction failed for payload: %s", payload)
+      flash(
+        "Analysis could not be completed. The account registry may be unavailable "
+        f"on the server. Details: {exc}",
+        "error",
+      )
 
   return render_template("predict.html", model_ready=True, result=result)
 
@@ -182,6 +223,9 @@ def api_predict():
     return jsonify(result)
   except (TypeError, ValueError, KeyError) as exc:
     return jsonify({"error": str(exc)}), 400
+  except Exception as exc:
+    logger.exception("API prediction failed")
+    return jsonify({"error": str(exc)}), 500
 
 
 @app.route("/api/metrics")

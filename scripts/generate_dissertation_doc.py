@@ -41,9 +41,18 @@ from dataset_utils import (
 RESULTS_DIR = PROJECT_ROOT / "outputs" / "model_results"
 FIGURES_DIR = RESULTS_DIR / "figures"
 DOCS_DIR = PROJECT_ROOT / "docs"
+SCREENSHOTS_DIR = DOCS_DIR / "screenshots"
 MODELS_DIR = PROJECT_ROOT / "models"
 CHAPTERS_MD = DOCS_DIR / "chapters-4-8.md"
 OUTPUT_DOCX = DOCS_DIR / "Chapters_4_to_8.docx"
+OUTPUT_DOCX_ALT = DOCS_DIR / "Chapters_4_to_8_with_screenshots.docx"
+
+UI_SCREENSHOTS = {
+  "figure_4_2_homepage.png": SCREENSHOTS_DIR / "homepage.png",
+  "figure_4_3_model_results.png": SCREENSHOTS_DIR / "model_result_page.png",
+  "figure_4_4_transaction_analysis.png": SCREENSHOTS_DIR / "transaction_analysis_page.png",
+  "figure_4_5_analysis_result.png": SCREENSHOTS_DIR / "analysis_result_page.png",
+}
 
 MODEL_NAMES = [
   "decision_tree",
@@ -377,17 +386,34 @@ def build_word_document(figure_map: dict[str, Path]) -> Path:
 
   lines = text.splitlines()
   i = 0
-  figure_insertions = {
-    "Figure 4.1": figure_map.get("figure_4_1_system_architecture.png"),
-    "Table 4.1": "table",
-    "Figure 4.2": figure_map.get("metrics_comparison.png"),
-    "Figure 4.3": figure_map.get("roc_curves_comparison.png"),
-  }
 
   confusion_figures = [
     (name, figure_map.get(f"confusion_matrix_{name}.png"))
     for name in MODEL_NAMES
   ]
+
+  ui_figure_captions = {
+    "**Figure 4.2:": (
+      UI_SCREENSHOTS["figure_4_2_homepage.png"],
+      "Figure 4.2: Deployed application — research overview homepage",
+      6.0,
+    ),
+    "**Figure 4.3:": (
+      UI_SCREENSHOTS["figure_4_3_model_results.png"],
+      "Figure 4.3: Model evaluation summary on the overview dashboard",
+      6.0,
+    ),
+    "**Figure 4.4:": (
+      UI_SCREENSHOTS["figure_4_4_transaction_analysis.png"],
+      "Figure 4.4: Transaction analysis input interface",
+      6.0,
+    ),
+    "**Figure 4.5:": (
+      UI_SCREENSHOTS["figure_4_5_analysis_result.png"],
+      "Figure 4.5: Fraud prediction result display",
+      6.0,
+    ),
+  }
 
   while i < len(lines):
     line = lines[i]
@@ -418,29 +444,23 @@ def build_word_document(figure_map: dict[str, Path]) -> Path:
 
     if "**Figure 4.1:" in line:
       add_formatted_paragraph(doc, line.replace("**", ""))
-      add_figure(doc, figure_map["figure_4_1_system_architecture.png"], "Figure 4.1: System architecture of the fraud detection prototype", width=6.2)
-      i += 1
-      continue
-
-    if "**Figure 4.2:" in line:
-      add_formatted_paragraph(doc, line.replace("**", ""))
       add_figure(
         doc,
-        figure_map["metrics_comparison.png"],
-        "Figure 4.2: Comparative model performance metrics (accuracy, precision, recall, F1-score, ROC-AUC)",
+        figure_map["figure_4_1_system_architecture.png"],
+        "Figure 4.1: System architecture of the fraud detection prototype",
         width=6.2,
       )
       i += 1
       continue
 
-    if "**Figure 4.3:" in line:
-      add_formatted_paragraph(doc, line.replace("**", ""))
-      add_figure(
-        doc,
-        figure_map["roc_curves_comparison.png"],
-        "Figure 4.3: ROC curves for all trained classifiers on the held-out test set",
-        width=6.0,
-      )
+    ui_inserted = False
+    for key, (img_path, caption, width) in ui_figure_captions.items():
+      if key in line:
+        add_formatted_paragraph(doc, line.replace("**", ""))
+        add_figure(doc, img_path, caption, width=width)
+        ui_inserted = True
+        break
+    if ui_inserted:
       i += 1
       continue
 
@@ -452,9 +472,22 @@ def build_word_document(figure_map: dict[str, Path]) -> Path:
       add_formatted_paragraph(doc, line)
       i += 1
       doc.add_paragraph(
-        "Figure 4.4 to Figure 4.7 present confusion matrices for each trained classifier on the held-out test set."
+        "Figures 4.6 and 4.7 summarise quantitative model evaluation on the held-out test set. "
+        "Figures 4.8 to 4.11 present confusion matrices for each trained classifier."
       )
-      fig_num = 4
+      add_figure(
+        doc,
+        figure_map["metrics_comparison.png"],
+        "Figure 4.6: Comparative model performance metrics (accuracy, precision, recall, F1-score, ROC-AUC)",
+        width=6.2,
+      )
+      add_figure(
+        doc,
+        figure_map["roc_curves_comparison.png"],
+        "Figure 4.7: ROC curves for all trained classifiers on the held-out test set",
+        width=6.0,
+      )
+      fig_num = 8
       for model_key, fig_path in confusion_figures:
         if fig_path and fig_path.exists():
           add_figure(
@@ -474,9 +507,16 @@ def build_word_document(figure_map: dict[str, Path]) -> Path:
       add_formatted_paragraph(doc, line)
     i += 1
 
-  doc.save(OUTPUT_DOCX)
-  print(f"Saved {OUTPUT_DOCX}", flush=True)
-  return OUTPUT_DOCX
+  for output_path in (OUTPUT_DOCX, OUTPUT_DOCX_ALT):
+    try:
+      doc.save(output_path)
+      print(f"Saved {output_path}", flush=True)
+      return output_path
+    except PermissionError:
+      print(f"Could not write {output_path} (file may be open in Word).", flush=True)
+  raise PermissionError(
+    f"Close {OUTPUT_DOCX.name} in Word and run the script again."
+  )
 
 
 def main() -> None:

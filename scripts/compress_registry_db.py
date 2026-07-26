@@ -20,7 +20,7 @@ def main() -> None:
   gz_mb = GZ_PATH.stat().st_size / (1024 * 1024)
   print(f"Compressed {DB_PATH.name} ({raw_mb:.1f} MB) -> {GZ_PATH.name} ({gz_mb:.1f} MB)")
   if gz_mb > 100:
-    print("WARNING: compressed file still exceeds 100 MB; use Git LFS.")
+    print("WARNING: compressed file exceeds GitHub's 100 MB limit — reduce registry size or use an external download URL.")
 
 
 if __name__ == "__main__":

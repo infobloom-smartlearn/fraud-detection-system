@@ -29,6 +29,8 @@ models/account_registry.joblib
 models/account_registry.db
 models/account_registry.db-shm
 models/account_registry.db-wal
+models/account_registry.db.bak
+models/*.bak
 models/fraud_detection_pipeline.joblib
 models/random_forest*.joblib
 models/xgboost*.joblib

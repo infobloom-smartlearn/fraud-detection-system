@@ -90,15 +90,15 @@ Implementation proceeded through six staged activities aligned with the research
 | XGBoost | 82.24% | 100.00% | 64.48% | 0.784 | 1.000 |
 | Random Forest | 79.22% | 70.64% | 100.00% | 0.828 | 1.000 |
 
-**Stage 4: Model selection and serialisation.** The Decision Tree was exported as best_model.joblib and embedded within FraudDetectionPipeline for unified preprocessing and prediction. The pipeline bundles the classifier, feature column list, account registry, and tuned threshold so that a single load operation prepares the application for inference. **Stage 5: Web application development.** Flask routes were created for the research overview (/), transaction analysis (/predict), health monitoring (/health), and JSON inference (/api/predict). The interface was iteratively redesigned to meet dissertation presentation standards, incorporating system status indicators, methodology panels, and a comparative metrics table. Form validation ensures required transaction fields are present before prediction, and results are rendered with fraud probability, binary classification, and risk band. **Stage 6: Deployment configuration.** Production dependencies were isolated in requirements-prod.txt to reduce memory footprint on Render. The WSGI entry point (wsgi.py) and Render blueprint were configured, with health-check endpoints validated locally before cloud release. These stages completed the artefact from trained model to deployable web service. Figure 4.2 presents the research overview dashboard; Figure 4.3 presents the transaction analysis interface (diagrams to be inserted).
+**Stage 4: Model selection and serialisation.** The Decision Tree was exported as best_model.joblib and embedded within FraudDetectionPipeline for unified preprocessing and prediction. The pipeline bundles the classifier, feature column list, account registry, and tuned threshold so that a single load operation prepares the application for inference. **Stage 5: Web application development.** Flask routes were created for the research overview (/), transaction analysis (/predict), health monitoring (/health), and JSON inference (/api/predict). The interface was iteratively redesigned to meet dissertation presentation standards, incorporating system status indicators, methodology panels, and a comparative metrics table. Form validation ensures required transaction fields are present before prediction, and results are rendered with fraud probability, binary classification, and risk band. **Stage 6: Deployment configuration.** Production dependencies were isolated in requirements-prod.txt to reduce memory footprint on Render. The WSGI entry point (wsgi.py) and Render blueprint were configured, with health-check endpoints validated locally before cloud release. These stages completed the artefact from trained model to deployable web service. Figures 4.2 to 4.5 present screenshots of the deployed web application on Render.
 
-**Figure 4.2: Research overview dashboard — model evaluation summary and system status**
+**Figure 4.2: Deployed application — research overview homepage**
 
-*[Insert screenshot: Overview page showing hero banner, system status panel, research scope cards, and model comparison table with Decision Tree marked as Deployed]*
+**Figure 4.3: Model evaluation summary on the overview dashboard**
 
-**Figure 4.3: Transaction analysis user interface**
+**Figure 4.4: Transaction analysis input interface**
 
-*[Insert UI diagram/screenshot provided by student: transaction input form and prediction result panel showing fraud classification, probability, and risk level]*
+**Figure 4.5: Fraud prediction result display**
 
 ---
 
@@ -220,4 +220,4 @@ Future work should evaluate models on naturally imbalanced data and multi-part t
 
 ---
 
-*Note: Replace figure placeholders with actual screenshots and the provided UI diagram before submission. Verify Harvard references in Chapters Six and Seven match your Chapter Two bibliography.*
+*Note: UI screenshots are stored in docs/screenshots/. Regenerate with: python scripts/generate_dissertation_doc.py*
